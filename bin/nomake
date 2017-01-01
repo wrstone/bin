@@ -1,0 +1,39 @@
+#!/bin/bash
+#############################################################################
+#                                                                           #
+#  NAME:     nomake                                                         #
+#  VERSION:  1.0                                                            #
+#  AUTHOR:   William Stone III <wrs@wrstone.com>                            #
+#  WRITTEN:  Thu Sep 13 15:00:43 UTC 2012                                   #
+#  MODIFIED: Thu Sep 13 15:00:43 UTC 2012                                   #
+#                                                                           #
+#  PURPOSE:  This script compiles simple C programs for which no Makefile   #
+#            or similar applications exist or are configured.               #
+#                                                                           #
+#            The program calls GCC to compile the specified C source code   #
+#            file.  It strips off the ".c" extension from the source code   #
+#            filename and uses this as the target binary name.              #
+#                                                                           #
+#############################################################################
+
+# Get the current program name
+PROGRAM=`basename $0`
+
+# Check to see if the user specified a C source code file
+if [ "$1" != "" ]; then
+	# The user called the script correctly, so we can do work
+	
+	# Set the source to the C source code file provided
+	SOURCE=$1
+	# Set the target to the same name as the source code file without an extension
+	TARGET=`basename $1 .c`
+
+	# Call the GCC Compiler	
+	gcc -Wall -g $SOURCE -o $TARGET
+else
+	# The user didn't specify a source code file, so let's give them instructions
+	echo
+	echo "Usage:  nomake [C Source Code]"
+	echo "Where [C Source Code] is the name of a C source code file."
+	echo
+fi

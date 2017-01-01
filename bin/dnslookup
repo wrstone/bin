@@ -1,0 +1,37 @@
+#!/bin/bash
+#############################################################################
+#                                                                           #
+#  NAME:     dnslookup                                                      #
+#  VERSION:  1.0                                                            #
+#  AUTHOR:   William Stone III <wrs@wrstone.com>                            #
+#  WRITTEN:  Mon Apr 11 12:31:01 UTC 2016                                   #
+#  MODIFIED: Mon Apr 11 12:31:01 UTC 2016                                   #
+#                                                                           #
+#  PURPOSE:  This script will return general DNS records and then the MX    #
+#            record for a specified domain.                                 #
+#                                                                           #
+#############################################################################
+
+# Clear the screen
+clear
+
+# Get the current program name
+PROGRAM=`basename $0`
+
+# Check to see if the user specified a command-line option
+if [ "$1" != "" ]
+then
+	# The user called the script correctly, so we can do work
+	TARGET=$1
+	date -u
+	nslookup -debug -query=any $TARGET
+	nslookup -debug -query=mx $TARGET
+
+else
+	# The user didn't specify any command line options, so let's
+	# give them instructions
+	echo
+	echo "Usage:  $PROGRAM [domain.name]"
+	echo "This pogram returns general and DNS record for the specified domain."
+	echo
+fi

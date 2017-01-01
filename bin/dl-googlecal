@@ -1,0 +1,8 @@
+#!/usr/pkg/bin/bash
+
+INCREMENT=`date +%Y-%m-%d_%H-%M`
+echo $INCREMENT
+DIR="/arpa/tz/w/wrstone/Google"
+echo $DIR
+# curl -s https://www.google.com/calendar/ical/address/wrstone.com/basic.ics -o "$DIR/cal_$INCREMENT.ics"
+# find $DIR -mtime +7 -exec rm -f {} \;

@@ -1,0 +1,15 @@
+#!/bin/bash
+# http://p3tris.blogspot.com
+# Do not use for illegal downloading! Ask the permission of the owners first!
+# This is just for academic reasons!
+
+for a in $@
+do
+  for video in $(curl -s $a | grep -o "url='http://www.youtube.com/watch?v=[^']*'")
+  do
+    id=$(echo $video | sed "s|url\='http://www.youtube.com/watch?v=\(.*\)&amp;.*'|\1|")
+    youtube-dl http://www.youtube.com/watch?v=$id
+    ffmpeg -i $id.flv -acodec libmp3lame -ab 160k  $id.mp3
+    rm $id.flv
+  done
+done

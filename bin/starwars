@@ -1,0 +1,15 @@
+#!/bin/bash
+#############################################################################
+#                                                                           #
+#  NAME:     starwars                                                       #
+#  VERSION:  1.0                                                            #
+#  AUTHOR:   William Stone III <wrs@wrstone.com>                            #
+#  WRITTEN:  Thu Sep 13 15:00:43 UTC 2012                                   #
+#  MODIFIED: Thu Sep 13 15:00:43 UTC 2012                                   #
+#                                                                           #
+#  PURPOSE:  This script simply telnets to towel.blinkenlights.nl so that   #
+#            one needn't constantly look up the correct site.               #
+#                                                                           #
+#############################################################################
+
+telnet towel.blinkenlights.nl

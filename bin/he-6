@@ -1,0 +1,3 @@
+#!/bin/bash
+
+telnet -6 route-server.he.net

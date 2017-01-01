@@ -1,0 +1,336 @@
+#!/bin/sh
+# full and incremental backup script
+# created 07 February 2000
+# Based on a script by Daniel O'Callaghan <danny@freebsd.org>
+# modified by Gerhard Mourani <gmourani@videotron.ca>
+# modified by Jose Da Silva <Digital@JoesCat.com> 05/feb/08
+# (add continuous 4 week backup so you can recover further back)
+# modified by Jose Da Silva <Digital@JoesCat.com> 08/sep/10
+# (add error checks, no chown/chmod if filesystem not compatible)
+# modified by Jose Da Silva <Digital@JoesCat.com> 12/oct/16
+# (separate monthly dir, split for DVD, CD, or TAPE. --exclude=)
+#
+# This script was originally based on the script shown on website
+# <http://www.faqs.org/docs/securing/chap29sec306.html> and was
+# modified to backup several directories plus keep a "lastweek"
+# "prevweek" and "priorweek" backups too, and report errors.
+#
+# This script was further improved with additional requests asked
+# by readers looking for a basic backup script, such as reporting
+# of basic errors, such as failing to save, allowing backups on
+# filesystems without UNIX-like ownership permissions, and making
+# monthly backups in a segmented fashion which is portable enough
+# to be backed up to media such as TAPE, CDrom, or DVDrom to be
+# kept off-site elsewhere. To restore segmented backups, you will
+# need to join the files as "cat backup.tar.gz.* >backup.tar.gz"
+#
+# If you need to backup directories which contain active files,
+# it is recommended that you do a snapshot of those directories
+# and then do a backup of the snapshot, this way, you have less
+# problems dealing with file-locks and files in transition.
+# If you need to run a snapshot first, just insert a call to the
+# appropriate script at the beginning/end of the main routine below.
+#
+# Change the variables below to fit your computer/backup system
+
+COMPUTER=genesis		# Name of this computer
+DIR1="/home/bird /home/cat"	# Directories to backup daily
+DIR2="/home/dog"		# (only 3 examples shown here, but
+DIR3="/etc /root"		#  more can be added DIR4, DIR5...)
+# (Add more DIRX and modify code down in main routine as needed)
+
+# Exclude these files and directories from the tar backup files
+EXL1="--exclude='*.kde4/cache-* *.kde4/socket-* *.kde4/tmp-*'"
+EXL2="--exclude='*~ *.bak *.BAK'"
+EXL3=""
+
+BKDIR="/backups"		# Where to store daily backups
+BKDIRM="/backupsM"		# Where to store monthly backups
+BKSIZM="638m"			# Size of monthly backups, 0=off
+TIMEDIR="$BKDIR/last-full"	# Where to store full backup "time"
+ERRFILE="/var/log/syslog"	# Send error messages to this file
+BKOWNER=root.adm		# Owner and Group for backup files
+CHMODCHOWN=1			# These files use chmod+chown, 0=off
+
+# Reduce list of paths to trusted directories (most->least trusted)
+PATH=/bin:/usr/bin:/usr/local/bin
+
+# Name and location of commands so you don't need to search paths
+TAR=/bin/tar			# Name and location of commands
+BASENAME=/bin/basename		# Use "which" to find commands, but
+CAT=/bin/cat			# try to check /bin before using
+DATE=/bin/date			# commands located elsewhere such as
+ECHO=/bin/echo			# in /usr/local/bin or in /usr/bin
+CHMOD=/bin/chmod
+CHOWN=/bin/chown
+HOSTNAME=/bin/hostname
+MKDIR=/bin/mkdir
+MOUNT=/bin/mount
+MV=/bin/mv
+RM=/bin/rm
+SERVICE=/sbin/service
+SPLIT=/usr/bin/split
+UMOUNT=/bin/umount
+WHOAMI=/usr/bin/whoami
+
+DOW=`$DATE +%a`			# Day of the week e.g. Mon
+DOM=`$DATE +%d`			# Date of the Month e.g. 27
+MD=`$DATE +%b%d`		# Month and Date e.g. Sep27
+MDT=`$DATE +"%b %d %T"`		# Month Day Time Sep 27 12:00:00
+CMD=`$BASENAME "$0"`		# Command Line Program
+EM="$MDT `$HOSTNAME` $CMD[$$]:"	# Error Message info
+
+errortmp=0			# Temporary error accumilator
+errors=0			# 0 if no errors found at all
+
+# On the 1st of the month, do permanent full backups.
+# If BKSIZM=0, then make one large backup file, otherwise break the
+# monthly backups into segments which can be put on CDroms (638m),
+# or DVDroms, or Tape, or another offsite backup media. This is
+# done by making a complete file, and then splitting the file into
+# seperate segments that can be retrieved or moved at a later time.
+#
+# Every Sunday, prevweek's backup is pushed to priorweek's backup,
+# lastweek's backup pushed to prevweek's backup, and then Sunday's
+# backup is pushed to lastweek's backup before creating a Sunday
+# full backup. This creates 4 weeks worth of rollover backups.
+#
+# Monday to Saturday, an incremental backup is made based on Sunday
+# so that you you have daily backups for new files until next week.
+#
+# if NEWER = "", then tar backs up all files in the directories
+# otherwise it backs up files newer than the NEWER date. NEWER
+# gets its date from the file written every Sunday.
+
+ErrorTest () {
+  # Check exit status of last command for any errors and set flag
+  if [ "$?" -ne 0 ]; then
+    errortmp=1;
+  fi
+}
+
+ErrorSet () {
+  # Set errors if errortmp=1 and send error message to $ERRFILE
+  if [ $errortmp -eq 1 ]; then
+    $ECHO "$EM Error $1" >> $ERRFILE;
+    errors=1
+  fi
+}
+
+UpdateTheDate() {
+  # Update full backup date so increments happen after this
+  errortmp=0;
+  NOW=`$DATE +"%Y-%m-%d %X"`; ErrorTest;
+  $ECHO "$NOW" > "$TIMEDIR/$COMPUTER-full-date"; ErrorTest;
+  if [ $CHMODCHOWN -eq 1 ]; then
+    $CHMOD 640 "$TIMEDIR/$COMPUTER-full-date"; ErrorTest;
+    $CHOWN $BKOWNER "$TIMEDIR/$COMPUTER-full-date"; ErrorTest;
+  fi
+  ErrorSet "with time stamp $TIMEDIR/$COMPUTER-full-date";
+}
+
+
+MakeFullMonthlyBackup() {
+  # Make a full monthly backup based on given directories.
+  # Store the monthly backup in directory location BKDIRM
+  errortmp=0;
+  if [ -z $BKSIZM ] || [ "$BKSIZM" == "0" ]; then
+    # Save one large backup file into monthly backup directory
+    $TAR $3 -cpzf "$BKDIRM/$COMPUTER-$MD-$1.tar.gz" "$2"; ErrorTest;
+    if [ $CHMODCHOWN -eq 1 ] && \
+       [ -f "$BKDIRM/$COMPUTER-$MD-$1.tar.gz" ]; then
+      $CHMOD 640 "$BKDIRM/$COMPUTER-$MD-$1.tar.gz"; ErrorTest;
+      $CHOWN $BKOWNER "$BKDIRM/$COMPUTER-$MD-$1.tar.gz"; ErrorTest;
+    fi
+  else
+    # Create one large backup file temporarily that tar can verify
+    $TAR $3 -cpzf "$BKDIR/$COMPUTER-$MD-$1.tar.gz" "$2"; ErrorTest;
+    # Split backup file into segments that can be stored elsewhere
+    if [ -f "$BKDIR/$COMPUTER-$MD-$1.tar.gz" ]; then
+      # If file created then split results into monthly backup dir
+      $CAT "$BKDIR/$COMPUTER-$MD-$1.tar.gz" | $SPLIT -b$BKSIZM - \
+           "$BKDIRM/$COMPUTER-$MD-$1.tar.gz."; ErrorTest;
+      $RM -f "$BKDIR/$COMPUTER-$MD-$1.tar.gz"; ErrorTest;
+      if [ $CHMODCHOWN -eq 1 ]; then
+        $CHMOD 640 "$BKDIRM/$COMPUTER-$MD-$1.tar.gz."*; ErrorTest;
+        $CHOWN $BKOWNER "$BKDIRM/$COMPUTER-$MD-$1.tar.gz."*;
+        ErrorTest;
+      fi
+    fi
+  fi
+  ErrorSet "with tar file $BKDIRM/$COMPUTER-$MD-$1.tar.gz";
+}
+
+MakeFullWeeklyBackup() {
+  # Store 4 full weekly backups in directory location BKDIR
+  # First, move previous week's backups into prior week's backups
+  errortmp=0;
+  if [ -f "$BKDIR/$COMPUTER-$DOW-prevweek-$1.tar.gz" ]; then
+    $MV "$BKDIR/$COMPUTER-$DOW-prevweek-$1.tar.gz" \
+        "$BKDIR/$COMPUTER-$DOW-priorweek-$1.tar.gz"; ErrorTest;
+    if [ $CHMODCHOWN -eq 1 ]; then
+      $CHMOD 640 "$BKDIR/$COMPUTER-$DOW-priorweek-$1.tar.gz";
+      ErrorTest;
+      $CHOWN $BKOWNER "$BKDIR/$COMPUTER-$DOW-priorweek-$1.tar.gz";
+      ErrorTest;
+    fi
+    ErrorSet "moving $BKDIR/$COMPUTER-$DOW-prevweek-$1.tar.gz";
+  fi
+  # Next, move last week's backups into previous week's backups
+  errortmp=0;
+  if [ -f "$BKDIR/$COMPUTER-$DOW-lastweek-$1.tar.gz" ]; then
+    $MV -f "$BKDIR/$COMPUTER-$DOW-lastweek-$1.tar.gz" \
+           "$BKDIR/$COMPUTER-$DOW-prevweek-$1.tar.gz"; ErrorTest;
+    if [ $CHMODCHOWN -eq 1 ]; then
+      $CHMOD 640 "$BKDIR/$COMPUTER-$DOW-prevweek-$1.tar.gz";
+      ErrorTest;
+      $CHOWN $BKOWNER "$BKDIR/$COMPUTER-$DOW-prevweek-$1.tar.gz";
+      ErrorTest;
+    fi
+    ErrorSet "moving $BKDIR/$COMPUTER-$DOW-lastweek-$1.tar.gz";
+  fi
+  # Then, move this week's full backups into last week's backups
+  errortmp=0;
+  if [ -f "$BKDIR/$COMPUTER-$DOW-$1.tar.gz" ]; then
+    $MV "$BKDIR/$COMPUTER-$DOW-$1.tar.gz" \
+        "$BKDIR/$COMPUTER-$DOW-lastweek-$1.tar.gz"; ErrorTest;
+    if [ $CHMODCHOWN -eq 1 ]; then
+      $CHMOD 640 "$BKDIR/$COMPUTER-$DOW-lastweek-$1.tar.gz";
+      ErrorTest;
+      $CHOWN $BKOWNER "$BKDIR/$COMPUTER-$DOW-lastweek-$1.tar.gz";
+      ErrorTest;
+    fi
+    ErrorSet "moving weekly file $BKDIR/$COMPUTER-$DOW-$1.tar.gz";
+  fi
+  # Finally, create a new weekly backup for this day-of-week
+  errortmp=0;
+  $TAR $3 -cpzf "$BKDIR/$COMPUTER-$DOW-$1.tar.gz" "$2"; ErrorTest;
+  if [ $CHMODCHOWN -eq 1 ]; then
+    $CHMOD 640 "$BKDIR/$COMPUTER-$DOW-$1.tar.gz"; ErrorTest;
+    $CHOWN $BKOWNER "$BKDIR/$COMPUTER-$DOW-$1.tar.gz"; ErrorTest;
+  fi
+  ErrorSet "with weekly file $BKDIR/$COMPUTER-$DOW-$1.tar.gz";
+}
+
+MakeIncrementalWeeklyBackup() {
+  # Make an incremental backup in BKDIR based on date in NEWER file
+  errortmp=0;
+  $TAR $4 --newer="$1" -cpzf "$BKDIR/$COMPUTER-$DOW-$2.tar.gz" "$3";
+  ErrorTest;
+  if [ $CHMODCHOWN -eq 1 ] && \
+     [ -f "$BKDIR/$COMPUTER-$DOW-$2.tar.gz" ]; then
+    $CHMOD 640 "$BKDIR/$COMPUTER-$DOW-$2.tar.gz"; ErrorTest;
+    $CHOWN $BKOWNER "$BKDIR/$COMPUTER-$DOW-$2.tar.gz"; ErrorTest;
+  fi
+  ErrorSet "with incremental file $BKDIR/$COMPUTER-$DOW-$2.tar.gz";
+}
+
+
+MakeBackupDirectory() {
+  if [ $errortmp -eq 0 ]; then
+    # Verify backup directory $1 exists, otherwise create it.
+    if [ ! -d "$1" ]; then
+      $MKDIR "$1"
+      if [ ! -d "$1" ]; then
+        $ECHO "$EM Error, cannot make $1!" >> $ERRFILE;
+        $ECHO "$EM Error, no backup files made!" >> $ERRFILE;
+        errortmp=1;
+      else
+        if [ $CHMODCHOWN -eq 1 ]; then
+          $CHMOD 740 "$1"; ErrorTest;
+          $CHOWN $BKOWNER "$1"; ErrorTest;
+          ErrorSet "setting permissions on directory $1";
+        fi
+      fi
+    fi
+  fi
+}
+
+#----- Main program starts here -----
+if [ ! -z $1 ] && [ "$1" != "--full" ]; then
+  $ECHO "Usage: $0 --full to force a full monthly + weekly backup.";
+  $ECHO "Run $0 without any command-line options to run automated.";
+  $ECHO "All other variables are set in the script.";
+  exit 0
+fi
+
+if [ "`$WHOAMI`" != "root" ]; then
+  $ECHO "$EM Sorry, you must be root!";
+  exit 1
+fi
+
+# Mount drive. NOTE: Create mount in /etc/fstab before using this,
+# otherwise you need to describe the /dev/hd_ location in here!
+#$MOUNT "$BKDIR";
+
+# Verify all backup directories exist, otherwise create them.
+MakeBackupDirectory "$BKDIRM";	# Build monthly directory
+MakeBackupDirectory "$BKDIR";	# Build rotating directory
+if [ $errortmp -eq 1 ]; then
+  exit 2
+fi
+MakeBackupDirectory "$TIMEDIR";	# Build timekeeping directory
+if [ $errortmp -eq 1 ]; then
+  exit 3
+fi
+
+# Verify time file exists, otherwise create it.
+if [ ! -f "$TIMEDIR/$COMPUTER-full-date" ]; then
+  UpdateTheDate;
+  if [ -f "$TIMEDIR/$COMPUTER-full-date" ]; then
+    # Created a new time file with current time
+    if [ $CHMODCHOWN -eq 1 ]; then
+      errortmp=0;
+      $CHMOD 640 "$TIMEDIR/$COMPUTER-full-date"; ErrorTest;
+      $CHOWN $BKOWNER "$TIMEDIR/$COMPUTER-full-date"; ErrorTest;
+      ErrorSet "setting permissions, $TIMEDIR/$COMPUTER-full-date";
+    fi
+  else
+    # Unable to create a Time file, report an error
+    $ECHO "$EM Error, cannot find $TIMEDIR/$COMPUTER-full-date!" \
+          >> $ERRFILE;
+    $ECHO "$EM Error, no backup files made !" >> $ERRFILE;
+    exit 4
+  fi
+fi
+
+if [ $DOM == "01" ] || [ "$1" == "--full" ]; then
+  # Create Monthly Backups on 1st day of each month,
+  # or if user added --full on the command-line
+  MakeFullMonthlyBackup "1" "$DIR1" "$EXL1";
+  MakeFullMonthlyBackup "2" "$DIR2" "$EXL2";
+  MakeFullMonthlyBackup "3" "$DIR3" "$EXL3";
+
+  # ...This is only an example of stop, backup, start (a service)
+  #$SERVICE boinc stop
+  #MakeFullMonthlyBackup "4" "$DIR4" "$EXL4";
+  #$SERVICE boinc start
+fi
+
+if [ $DOW == "Sun" ] || [ "$1" == "--full" ]; then
+  # Create Full Weekly Backups on Sundays
+  MakeFullWeeklyBackup "1" "$DIR1" "$EXL1";
+  MakeFullWeeklyBackup "2" "$DIR2" "$EXL2";
+  MakeFullWeeklyBackup "3" "$DIR3" "$EXL3";
+
+  UpdateTheDate;
+else
+  # Make incremental backups - overwrite last weeks
+
+  # Get date of last full backup
+  NEWER="`$CAT $TIMEDIR/$COMPUTER-full-date`"
+
+  MakeIncrementalWeeklyBackup "$NEWER" "1" "$DIR1" "$EXL1";
+  MakeIncrementalWeeklyBackup "$NEWER" "2" "$DIR2" "$EXL2";
+  MakeIncrementalWeeklyBackup "$NEWER" "3" "$DIR3" "$EXL3";
+fi
+
+# Done, umount this drive until it is needed again tomorrow
+#$UMOUNT -l "$BKDIR";
+
+#if [ $errors -eq 1 ]; then
+#  # Errors were found while doing a backup, warn someuser!
+#  $ECHO "$EM Error creating backups!" >> \
+#	 /home/someuser/Desktop/warning.txt
+#  $CHMOD 777 /home/someuser/Desktop/warning.txt
+#fi

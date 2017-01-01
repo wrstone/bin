@@ -1,0 +1,2 @@
+#!/bin/sh
+sshfs wrstone@wrstone.echofs.com:/home/wrstone echofs/ -o uid=13095,gid=500

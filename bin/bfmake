@@ -1,0 +1,32 @@
+#!/bin/bash
+#############################################################################
+#                                                                           #
+#  NAME:     brmake                                                         #
+#  VERSION:  1.0                                                            #
+#  AUTHOR:   William Stone III <wrs@wrstone.com>                            #
+#  WRITTEN:  Thu Sep 20 01:54:59 UTC 2012                                   #
+#  MODIFIED: Thu Sep 20 01:54:59 UTC 2012                                   #
+#                                                                           #
+#  PURPOSE:  This script compiles BrainFuck code given a source code file   #
+#            as the command-line argument.                                  #
+#                                                                           #
+#############################################################################
+
+# Get the current program name
+PROGRAM=`basename $0`
+
+# Check to see if the user specified a command-line option
+if [ "$1" != "" ]; then
+	# The user called the script correctly, so we can do work
+	SOURCE=$1
+	TARGET=`basename $1 .b`
+	bf < $SOURCE > $TARGET && chmod +x $TARGET
+
+else
+	# The user didn't specify a source code file, so let's give them instructions
+	echo
+	echo "Usage:  $PROGRAM [options]"
+	echo "The program takes the name of a BrainFuck source code file and"
+	echo "compiles it."
+	echo
+fi

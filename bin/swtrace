@@ -1,0 +1,3 @@
+#!/bin/bash
+
+traceroute --resolve-hostnames 216.81.59.173

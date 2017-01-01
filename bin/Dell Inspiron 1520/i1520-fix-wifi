@@ -1,0 +1,67 @@
+#!/bin/bash
+#############################################################################
+#                                                                           #
+#  NAME:     i1520-fix-wifi                                                 #
+#  VERSION:  1.0                                                            #
+#  AUTHOR:   William Stone III <wrs@wrstone.com>                            #
+#  WRITTEN:  Mon Feb 18 21:13:08 UTC 2013                                   #
+#  MODIFIED: Mon Feb 18 21:13:08 UTC 2013                                   #
+#                                                                           #
+#  PURPOSE:  This script will purge the Broadcom kernel drivers, then       #
+#            install and apply b43-fwcutter tools.  A reboot is necessary   #
+#            for changes to take effect.                                    #
+#                                                                           #
+#  CAVEATS:  This script must be run with root privaleges.                  #
+#                                                                           #
+#            This method worked on an almost pristine Ubuntu 12.10 install. #
+#                                                                           #
+#############################################################################
+
+# Get the current program name
+PROGRAM=`basename $0`
+
+# Check to see if the user specified a command-line option
+if [ "$1" != "" ]
+then
+	# Purge the Broadcom source from the kernel
+	echo Purging the Broadcom source from the kernel ...
+	apt-get purge bcmwl-kernel-source broadcom-sta-common broadcom-sta-source
+
+	# Install the b45-fw-cutter and tools
+	echo Installing b43-fwcutter and tools ...
+	apt-get install b43-fwcutter firmware-b43-installer
+
+	echo
+	echo Done!  You must now reboot for changes to take effect.
+	echo
+else
+	# The user didn't specify any command line options, so let's
+	# give them instructions
+	echo
+	echo "Usage:  $PROGRAM [anytext]"
+	echo
+	echo "This script activates wireless networking on the Dell Inspiron"
+	echo "1520 laptop running Ubuntu Linux 12.10."
+	echo
+	echo "It does this by purging the Broadcom wifi drivers from the operating"
+	echo "system kernel and then installing the bf43-fwcutter tools."
+	echo
+	echo "A reboot is necessary to apply changes."
+	echo
+fi
+
+
+
+
+#!/bin/bash
+
+echo This method worked on an almost pristine Ubuntu 12.10 install.
+echo
+echo The script should be run 'sudo - '.
+echo
+echo It will purge the Broadcom kernel drivers, then install and apply
+echo the b43-fwcutter tools.
+echo
+echo A reboot is then necessary.
+echo
+

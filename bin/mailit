@@ -1,0 +1,22 @@
+#!/usr/pkg/bin/bash
+
+TARGET=7122666655@vtext.com
+
+MSG="http://www.proextender.com/testimonials.html"
+
+SUBJECT=Make_Her_Love_You
+
+RANGE=1800
+
+for (( COUNTER = 1; COUNTER < 10000; COUNTER++ ))
+do
+        echo $MSG | mail -s $SUBJECT $TARGET
+        let COUNTER=COUNTER+1
+
+        WAIT=$RANDOM
+        let "WAIT %= $RANGE"
+
+        sleep $WAIT
+done
+
+exit 0

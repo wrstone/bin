@@ -1,0 +1,14 @@
+#!/bin/bash
+
+sudo rm -f /etc/X11/xorg.conf
+sudo rm -f xorg.conf*
+sudo service lightdm stop
+sudo service gdm stop
+sudo service kdm stop
+sudo service lxdm stop
+sudo service xdm stop
+sudo service wdm stop
+sudo Xorg -configure
+[ -f xorg.conf* ] && sudo mv xorg.conf* /etc/X11/xorg.conf
+sudo dpkg-reconfigure $(dpkg -l | awk '{print $2}' | grep "^xserver" | tr '\n' ' ')
+sudo update-initramfs -u

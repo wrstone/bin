@@ -1,0 +1,59 @@
+#!/bin/bash
+#############################################################################
+#                                                                           #
+#  NAME:     check-ssh                                                      #
+#  VERSION:  1.1                                                            #
+#  AUTHOR:   William Stone III <wrs@wrstone.com>                            #
+#  WRITTEN:  Fri Sep 26 20:01:36 UTC 2014                                   #
+#  MODIFIED: Wed Oct  1 18:25:28 UTC 2014                                   #
+#                                                                           #
+#  PURPOSE:  This script gives a list of users logged-in via SSH.  It takes #
+#            no command-line options.                                       #
+#                                                                           #
+#############################################################################
+
+# Get the current program name
+PROGRAM=`basename $0`
+
+# Check to see if the program is being run as root (for netstat options)
+if [[ $EUID -ne 0 ]]
+then
+
+	echo
+	echo "$PROGRAM needs to run with root permissions."
+	echo
+	exit 1
+
+else
+
+	# Check to see if the user specified a command-line option
+	if [ "$1" == "" ]
+	then
+		# Clear the screen
+		clear
+
+		# Get a list of active connections
+		echo "     ----- SSH Connections with IP Address -----"
+		netstat -tnpaW | grep ESTABLISHED.*sshd
+
+		# Print a blank line for legibility
+		echo
+
+		# Get a list of PIDs associated with the login
+		echo "     ----- SSH Connections with PID -----"
+		ps auxwww | grep sshd
+
+	else
+		# The user specified any line options, so let's
+		# give them instructions
+		echo
+		echo "Usage:  $PROGRAM"
+		echo "The program checks to see what users are logged in via SSH.  It must be"
+		echo "run with root permissions.  It takes no command-line arguments."
+		echo
+		exit 2
+	fi
+
+fi
+
+exit 0

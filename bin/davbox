@@ -1,0 +1,2 @@
+#!/bin/sh
+cadaver -t https://www.box.net/dav

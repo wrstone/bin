@@ -1,0 +1,2 @@
+#!/bin/sh
+ssh root@dsl-dynamic-209-50-29-184.inebraska.com

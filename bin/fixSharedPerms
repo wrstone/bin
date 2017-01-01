@@ -1,0 +1,41 @@
+#!/bin/bash
+#############################################################################
+#                                                                           #
+#  NAME:     fixSharedPerms                                                 #
+#  VERSION:  1.0                                                            #
+#  AUTHOR:   William Stone III <wrs@wrstone.com>                            #
+#  WRITTEN:  Mon Sep  2 15:09:08 UTC 2013                                   #
+#  MODIFIED: Mon Sep  2 15:09:08 UTC 2013                                   #
+#                                                                           #
+#  PURPOSE:  This script is a skelton.  It checks that the user entered     #
+#            a command-line option.  If there was a command-line option     #
+#            given, it will enter the main body for processing; if not, it  #
+#            prints usage instructions.                                     #
+#                                                                           #
+#            Modify this for your own scripts as appropriate.               #
+#                                                                           #
+#############################################################################
+
+# Get the current program name
+PROGRAM=`basename $0`
+
+# Check to see if the user specified a command-line option
+if [ "$1" != "" ]
+then
+	# Change ownership to root and users
+	chown -R root.users $1
+
+	# Change directory permissions to 775
+	find $1 -type d -print0 | xargs -0 chmod 775
+	# Change file permissions to 664
+	find $1 -type f -print0 | xargs -0 chmod 664
+
+else
+	# The user didn't specify any command line options, so let's
+	# give them instructions
+	echo
+	echo "Usage:  $PROGRAM /path"
+	echo "The program recurisively changes file permissions to"
+	echo "share files among the users group."
+	echo
+fi

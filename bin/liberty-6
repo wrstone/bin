@@ -1,0 +1,3 @@
+#!/bin/bash
+
+ssh -6 wrstone@2604:2d80:400a:803d:201:2eff:fe5a:863f

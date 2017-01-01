@@ -1,0 +1,8 @@
+#!/bin/sh
+
+# specify your external interface
+wan_iface=eth0
+
+current_ip=`ip a s dev $wan_iface | grep -o '[0-9]\{1,3\}\.[0-9]\{1,3\}\.[0-9]\{1,3\}\.[0-9]\{1,3\}' | head -n 1`
+
+echo $current_ip

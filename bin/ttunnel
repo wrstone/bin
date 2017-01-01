@@ -1,0 +1,3 @@
+#!/bin/bash
+
+ssh -NL 9091:localhost:9091 wrstone@liberty.wrstone.com

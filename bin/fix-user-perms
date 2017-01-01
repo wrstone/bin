@@ -1,0 +1,36 @@
+#!/bin/bash
+#############################################################################
+#                                                                           #
+#  NAME:     fix-user-perms                                                 #
+#  VERSION:  1.0                                                            #
+#  AUTHOR:   William Stone III <wrs@wrstone.com>                            #
+#  WRITTEN:  Tue Feb 16 17:34:02 UTC 2016                                   #
+#  MODIFIED: Tue Feb 16 17:34:02 UTC 2016                                   #
+#                                                                           #
+#  PURPOSE:  This script sets user permissions on shared files such that    #
+#            file permissions are correct.  It takes a single command-line  #
+#            argument telling the script where in the filesystem to begin   #
+#            processing.                                                    #
+#                                                                           #
+#############################################################################
+
+# Get the current program name
+PROGRAM=`basename $0`
+
+# Check to see if the user specified a command-line option
+if [ "$1" == "" ]
+then
+	# The user called the script correctly, so we can do work
+	chmod -R root.users *
+	find . -type f -print0 | xargs -0 chmod 664
+	find . -type d -print0 | xargs -0 chmod 755
+else
+	# The user didn't specify any command line options, so let's
+	# give them instructions
+	echo
+	echo "Usage:  $PROGRAM"
+	echo "The changes ownership and permissions of shared files.  It sets"
+	echo "ownership to user root and group users.  It sets permissions on"
+	echo "directories to 775 and files to 664."
+	echo
+fi
